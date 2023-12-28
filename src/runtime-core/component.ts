@@ -1,12 +1,16 @@
+import { publicIntanceProxyHandlers } from "./componentPublicInstance"
+
+// 创建component实例
 export function createComponentInstance(vnode) {
   const component = {
     vnode,
-    type: vnode.type
+    type: vnode.type,
+    setupState: {},
   }
-
   return component
 }
 
+// 挂载
 export function setupComponent(instance) {
   // TODO
   setupStatefulComponent(instance)
@@ -15,14 +19,15 @@ export function setupComponent(instance) {
 function setupStatefulComponent(instance) {
   const Component = instance.type
   const { setup } = Component
-  if(setup) {
+  instance.proxy = new Proxy({ _: instance }, publicIntanceProxyHandlers)
+  if (setup) {
     const setupResult = setup()
     handleSetupResult(instance, setupResult)
   }
 }
 
 function handleSetupResult(instance, setupResult: any) {
-  if(typeof setupResult === 'object') {
+  if (typeof setupResult === 'object') {
     instance.setupState = setupResult
   }
   finishComponentSetup(instance)
@@ -30,7 +35,7 @@ function handleSetupResult(instance, setupResult: any) {
 
 function finishComponentSetup(instance: any) {
   const Component = instance.type
-  if(Component.render) {
+  if (Component.render) {
     instance.render = Component.render
   }
 }
