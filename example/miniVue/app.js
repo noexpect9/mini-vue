@@ -7,11 +7,15 @@ export const app = {
     window.self = this
     return h('div', {
       id: 'root', class: 'red', onClick() {
-        console.log('click')
       }
     },
       [h('div', { class: 'title' }, 'Hi' + this.masg), h(Foo, {
-        count: 10
+        onAdd(a, b) {
+          console.log('onAdd', '============', a, b)
+        },
+        onAddFoo() {
+          console.log('onAddFoo')
+        }
       })]
     )
   },
