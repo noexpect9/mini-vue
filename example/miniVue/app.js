@@ -5,19 +5,12 @@ window.self = null
 export const app = {
   render() {
     window.self = this
-    return h('div', {
-      id: 'root', class: 'red', onClick() {
-      }
-    },
-      [h('div', { class: 'title' }, 'Hi' + this.masg), h(Foo, {
-        onAdd(a, b) {
-          console.log('onAdd', '============', a, b)
-        },
-        onAddFoo() {
-          console.log('onAddFoo')
-        }
-      })]
-    )
+    const app = h('div', {}, 'mini vue app')
+    const foo = h(Foo, {}, {
+      header: ({ age }) => h("p", {}, "header" + age),
+      footer: () => h("p", {}, "footer")
+    })
+    return h("div", {}, [app, foo])
   },
   setup() {
     return {

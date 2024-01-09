@@ -44,7 +44,9 @@ function mountElement(vnode: any, container: any) {
     const val = props[key]
     const isOn = (key: string) => /^on[A-Z]/.test(key)
     if (isOn(key)) {
+      // 获取key中事件名称
       const event = key.slice(2).toLowerCase()
+      // 注册事件
       el.addEventListener(event, val)
     } else {
       el.setAttribute(key, val)
