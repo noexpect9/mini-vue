@@ -1,6 +1,7 @@
 import { isObject } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component"
+import { Fragment } from "./vnode";
 
 // render操作
 export function render(vnode, container) {
@@ -8,14 +9,25 @@ export function render(vnode, container) {
 }
 
 function patch(vnode, container) {
-  const { shapeFlag } = vnode
-
-  // 判断是否是element
-  if (shapeFlag & ShapeFlags.ELEMENT) {
-    progressElement(vnode, container)
-  } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
-    progressComponent(vnode, container)
+  const { type, shapeFlag } = vnode
+  // Fragment -> 只渲染children
+  switch (type) {
+    case Fragment:
+      progressFragment(vnode, container)
+      break;
+    case Text:
+      progressText(vnode, container)
+      break;
+    default:
+      // 判断是否是element
+      if (shapeFlag & ShapeFlags.ELEMENT) {
+        progressElement(vnode, container)
+      } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+        progressComponent(vnode, container)
+      }
+      break
   }
+
 }
 
 // 处理component
@@ -26,6 +38,19 @@ function progressComponent(vnode, container) {
 // 处理element
 function progressElement(vnode: any, container: any) {
   mountElement(vnode, container)
+}
+
+// 处理Fragment
+function progressFragment(vnode: any, container: any) {
+  mountChildren(vnode, container)
+}
+
+// 处理Text
+function progressText(vnode: any, container: any) {
+  const { children } = vnode
+  const textNode = document.createTextNode(children)
+  vnode.el = textNode
+  container.appendChild(textNode)
 }
 
 // 挂载element
