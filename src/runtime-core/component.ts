@@ -12,7 +12,7 @@ export function createComponentInstance(vnode) {
     setupState: {},
     props: {},
     slots: {},
-    emit: () => {}
+    emit: () => { }
   }
   // emit需要传入组件实例
   component.emit = emit.bind(null, component) as any
@@ -33,9 +33,11 @@ function setupStatefulComponent(instance) {
   const { setup } = Component
   instance.proxy = new Proxy({ _: instance }, publicIntanceProxyHandlers)
   if (setup) {
+    setCurrentInstance(instance)
     const setupResult = setup(shallowReadonly(instance.props), {
       emit: instance.emit
     })
+    setCurrentInstance(null)
     handleSetupResult(instance, setupResult)
   }
 }
@@ -54,3 +56,11 @@ function finishComponentSetup(instance: any) {
   }
 }
 
+let currentInstance = null
+export function getCurrentInstance() {
+  return currentInstance
+}
+
+export function setCurrentInstance(instance) {
+  currentInstance = instance
+}
