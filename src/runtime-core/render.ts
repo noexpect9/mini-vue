@@ -1,5 +1,5 @@
 import { effect } from "../reactivity/effect";
-import { isObject } from "../shared";
+import { EMPTY_OBJ, isObject } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component"
 import { createAppAPI } from "./createApp";
@@ -7,7 +7,7 @@ import { Fragment } from "./vnode";
 
 // render操作
 export function createRenderer(renderOptions) {
-  const { createElement, patchProps, insert } = renderOptions
+  const { createElement, hostPatchProp, insert } = renderOptions
   function render(vnode, container, parentComponent) {
     patch(null, vnode, container, null)
   }
@@ -52,6 +52,32 @@ export function createRenderer(renderOptions) {
   // 处理更新操作
   function patchElement(n1, n2, container) {
     console.log('patchElement', n2, n1);
+    // 下次更新时n2中是没有el的
+    const el = (n2.el = n1.el)
+    const oldProps = n1.props || EMPTY_OBJ
+    const newProps = n2.props || EMPTY_OBJ
+    patchProp(el, oldProps, newProps)
+  }
+
+  function patchProp(el, oldProps, newProps) {
+    if (oldProps !== newProps) {
+      // 循环新的props
+      for (const key in newProps) {
+        const prevProp = oldProps[key]
+        const nextProp = newProps[key]
+        if (prevProp !== nextProp) {
+          hostPatchProp(el, key, prevProp, nextProp)
+        }
+      }
+      // oldProps在新的props中不存在
+      if (oldProps !== EMPTY_OBJ) {
+        for (const key in oldProps) {
+          if (!(key in newProps)) {
+            hostPatchProp(el, key, oldProps[key], null)
+          }
+        }
+      }
+    }
   }
 
   // 处理Fragment
@@ -71,7 +97,6 @@ export function createRenderer(renderOptions) {
   function mountElement(vnode: any, container: any, parentComponent) {
 
     const { type, props, children, shapeFlag } = vnode
-
     const el = (vnode.el = createElement(type))
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
       el.textContent = children
@@ -81,7 +106,7 @@ export function createRenderer(renderOptions) {
 
     for (const key in props) {
       const val = props[key]
-      patchProps(el, key, val)
+      hostPatchProp(el, key, null, val)
     }
     // container.appendChild(el)
     insert(el, container)
@@ -104,7 +129,6 @@ export function createRenderer(renderOptions) {
         instance.isMounted = true
       } else {
         console.log('update');
-        
         const { proxy } = instance
         const subTree = instance.render.call(proxy)
         const prevSubTree = instance.subTree
