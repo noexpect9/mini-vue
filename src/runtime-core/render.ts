@@ -1,3 +1,4 @@
+import { effect } from "../reactivity/effect";
 import { isObject } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component"
@@ -8,25 +9,27 @@ import { Fragment } from "./vnode";
 export function createRenderer(renderOptions) {
   const { createElement, patchProps, insert } = renderOptions
   function render(vnode, container, parentComponent) {
-    patch(vnode, container, null)
+    patch(null, vnode, container, null)
   }
 
-  function patch(vnode, container, parentComponent) {
-    const { type, shapeFlag } = vnode
+  // n1: 旧的vnode
+  // n2: 新的vnode
+  function patch(n1, n2, container, parentComponent) {
+    const { type, shapeFlag } = n2
     // Fragment -> 只渲染children
     switch (type) {
       case Fragment:
-        progressFragment(vnode, container, parentComponent)
+        progressFragment(n1, n2, container, parentComponent)
         break;
       case Text:
-        progressText(vnode, container)
+        progressText(n1, n2, container)
         break;
       default:
         // 判断是否是element
         if (shapeFlag & ShapeFlags.ELEMENT) {
-          progressElement(vnode, container, parentComponent)
+          progressElement(n1, n2, container, parentComponent)
         } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
-          progressComponent(vnode, container, parentComponent)
+          progressComponent(n1, n2, container, parentComponent)
         }
         break
     }
@@ -34,25 +37,33 @@ export function createRenderer(renderOptions) {
   }
 
   // 处理component
-  function progressComponent(vnode, container, parentComponent) {
-    mountComponent(vnode, container, parentComponent)
+  function progressComponent(n1, n2, container, parentComponent) {
+    mountComponent(n2, container, parentComponent)
   }
 
   // 处理element
-  function progressElement(vnode: any, container: any, parentComponent) {
-    mountElement(vnode, container, parentComponent)
+  function progressElement(n1, n2: any, container: any, parentComponent) {
+    if (!n1) {
+      mountElement(n2, container, parentComponent)
+    } else {
+      patchElement(n1, n2, container)
+    }
+  }
+  // 处理更新操作
+  function patchElement(n1, n2, container) {
+    console.log('patchElement', n2, n1);
   }
 
   // 处理Fragment
-  function progressFragment(vnode: any, container: any, parentComponent) {
-    mountChildren(vnode, container, parentComponent)
+  function progressFragment(n1, n2: any, container: any, parentComponent) {
+    mountChildren(n2, container, parentComponent)
   }
 
   // 处理Text
-  function progressText(vnode: any, container: any) {
-    const { children } = vnode
+  function progressText(n1, n2: any, container: any) {
+    const { children } = n2
     const textNode = document.createTextNode(children)
-    vnode.el = textNode
+    n2.el = textNode
     container.appendChild(textNode)
   }
 
@@ -83,15 +94,29 @@ export function createRenderer(renderOptions) {
     setupRenderEffect(instance, initVNode, container, parentComponent)
   }
   function setupRenderEffect(instance: any, initVNode: any, container: any, parentComponent) {
-    const { proxy } = instance
-    const subTree = instance.render.call(proxy)
-    patch(subTree, container, instance)
-    initVNode.el = subTree.el
+    effect(() => {
+      if (!instance.isMounted) {
+        console.log('init');
+        const { proxy } = instance
+        const subTree = (instance.subTree = instance.render.call(proxy))
+        patch(null, subTree, container, instance)
+        initVNode.el = subTree.el
+        instance.isMounted = true
+      } else {
+        console.log('update');
+        
+        const { proxy } = instance
+        const subTree = instance.render.call(proxy)
+        const prevSubTree = instance.subTree
+        instance.subTree = subTree
+        patch(prevSubTree, subTree, container, instance)
+      }
+    })
   }
 
   function mountChildren(vnode: any, container: any, parentComponent) {
     vnode.children.forEach(child => {
-      patch(child, container, parentComponent)
+      patch(null, child, container, parentComponent)
     })
   }
 
